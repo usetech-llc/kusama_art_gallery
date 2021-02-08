@@ -1,0 +1,7 @@
+{
+    "ClassId": "u64",
+    "TokenId": "u64",
+    "ClassData": "u64",
+    "TokenData": "u64",
+    "IpfsPin": "u128"
+  }
