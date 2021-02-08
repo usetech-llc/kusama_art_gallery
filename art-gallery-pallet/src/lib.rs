@@ -41,7 +41,6 @@ use orml_nft::{self as nft};
 use sp_runtime::{ 	
 	traits::{AtLeast32BitUnsigned, Member, Zero},
 	DispatchResult, };
-//use sp_std::vec::Vec;	
 use sp_std::prelude::*;
 
 const PALLET_ID: LockIdentifier = *b"gallery ";
@@ -75,8 +74,11 @@ pub trait Config: frame_system::Config + nft::Config  { //+ atomic_swap::Config
 	/// Default class data.
 	type DefaultClassData: Get<Self::ClassData>;
 
-	/// The balance of an account.
-	type IpfsPin: Parameter + Member + AtLeast32BitUnsigned + Default + Copy;
+	/// Default class metadata.
+	type DefaultClassMetadata: Get<Vec<u8>>;
+
+	/// Default token metadata.
+	type DefaultTokenMetadata: Get<Vec<u8>>;
 }
 
 decl_event!(
@@ -232,7 +234,7 @@ decl_module! {
 		#[weight = 0]
 		pub fn create_collection(origin) -> DispatchResult {
 			let _who = ensure_signed(origin)?;
-			let collection_id = nft::Module::<T>::create_class(&_who, vec![1], T::DefaultClassData::get()).unwrap();
+			let collection_id = nft::Module::<T>::create_class(&_who, T::DefaultClassMetadata::get(), T::DefaultClassData::get()).unwrap();
 
 			Self::deposit_event(RawEvent::CollectionCreated(collection_id));
 
@@ -256,9 +258,10 @@ decl_module! {
 			let balance = T::Currency::free_balance(&_who);
 			ensure!(!balance.is_zero(), "Balance not enought");
 
-			let locked = balance.saturating_sub(T::DefaultCost::get());	
-			T::Currency::set_lock(PALLET_ID, &_who, locked, WithdrawReasons::all());
-			let token_id = nft::Module::<T>::mint(&_who, collection_id, vec![], ipfs_pin).unwrap();
+		    //	let locked = balance.saturating_sub(T::DefaultCost::get());	
+
+			T::Currency::set_lock(PALLET_ID, &_who, T::DefaultCost::get(), WithdrawReasons::all());
+			let token_id = nft::Module::<T>::mint(&_who, collection_id, T::DefaultTokenMetadata::get(), ipfs_pin).unwrap();
 
 			Self::deposit_event(RawEvent::NFTCreated(collection_id, token_id));
 

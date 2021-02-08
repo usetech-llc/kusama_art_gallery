@@ -263,8 +263,10 @@ impl orml_nft::Config for Runtime {
 }
 
 parameter_types! {
-	pub const DefaultCost: Balance = 1;
-	pub DefaultClassData: u64 = 1;
+	pub const DefaultCost: Balance = 10_000_000_000;
+	pub DefaultClassData: u64 = 1000;
+	pub DefaultClassMetadata: Vec<u8> = vec![1];
+	pub DefaultTokenMetadata: Vec<u8> = vec![1];
 }
 
 impl art_gallery_pallet::Config for Runtime {
@@ -272,7 +274,8 @@ impl art_gallery_pallet::Config for Runtime {
 	type Currency = Balances;
 	type DefaultCost = DefaultCost;
 	type DefaultClassData = DefaultClassData;
-	type IpfsPin = u128;
+	type DefaultClassMetadata = DefaultClassMetadata;
+	type DefaultTokenMetadata = DefaultTokenMetadata;
 }
 
 impl pallet_sudo::Config for Runtime {
