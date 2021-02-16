@@ -62,6 +62,26 @@ pub struct ExtendedInfo {
     pub report: ReportReason,
 }
 
+decl_error! {
+	/// Error for art gallery
+	pub enum Error for Module<T: Config> {
+		/// Collection does't exists
+		CollectionNotFound,
+		/// Token doesn't exists
+		TokenNotFound,
+		/// Sender should equal token owner
+		MustBeTokenOwner,
+		/// Sender should be collection owner
+		MustBeCollectionOwner,
+		/// Sender should be collection owner or curator
+		MustBeCollectionOwnerOrCurator,
+		/// Sender should be curator
+		MustBeCurator,
+		/// Specified amount is above sender balance
+		BalanceNotEnough,
+	}
+}
+
 pub trait Config: frame_system::Config + nft::Config  { //+ atomic_swap::Config
 	type Event: From<Event<Self>> + Into<<Self as frame_system::Config>::Event>;
 
@@ -227,8 +247,8 @@ decl_storage! {
 
 decl_module! {
 	pub struct Module<T: Config> for enum Call where origin: T::Origin {
+		type Error = Error<T>;
 
-		// type Error = Error<T>;
 		fn deposit_event() = default;
 
 		#[weight = 0]
@@ -250,13 +270,13 @@ decl_module! {
 			// collection exists check
 			let collection = match nft::Module::<T>::classes(collection_id) {
 				Some(expr) => expr,
-				None => fail!("collection doesnt exists"),
+				None => fail!(Error::<T>::CollectionNotFound),
 			};
 
-			ensure!(collection.owner == _who, "only for owner");
+			ensure!(collection.owner == _who, Error::<T>::MustBeCollectionOwner);
 
 			let balance = T::Currency::free_balance(&_who);
-			ensure!(!balance.is_zero(), "Balance not enought");
+			ensure!(!balance.is_zero(), Error::<T>::BalanceNotEnough);
 
 		    //	let locked = balance.saturating_sub(T::DefaultCost::get());	
 
@@ -277,11 +297,11 @@ decl_module! {
 			// collection exists check
 			let collection = match nft::Module::<T>::classes(collection_id) {
 				Some(expr) => expr,
-				None => fail!("collection doesnt exists"),
+				None => fail!(Error::<T>::CollectionNotFound),
 			};
 
 			ensure!(Curator::<T>::get() == _who || collection.owner == _who, 
-				"only for owner or curator");
+				Error::<T>::MustBeCollectionOwnerOrCurator);
 
 			T::Currency::remove_lock(PALLET_ID, &_who);
 			nft::Module::<T>::burn(&_who, (collection_id, token_id)).unwrap();	
@@ -301,9 +321,9 @@ decl_module! {
 			// token exists check
 			let token = match nft::Module::<T>::tokens(collection_id, token_id) {
 				Some(expr) => expr,
-				None => fail!("token doesnt exists"),
+				None => fail!(Error::<T>::TokenNotFound),
 			};
-			ensure!(token.owner == _who, "only for owner");
+			ensure!(token.owner == _who, Error::<T>::MustBeTokenOwner);
 
 			nft::Module::<T>::transfer(&_who, &recipient, (collection_id, token_id)).unwrap();	
 			Self::deposit_event(RawEvent::Transfer(collection_id, token_id, recipient));
@@ -371,11 +391,11 @@ decl_module! {
 			// token exists check
 			let token = match nft::Module::<T>::tokens(collection_id, token_id) {
 				Some(expr) => expr,
-				None => fail!("token doesnt exists"),
+				None => fail!(Error::<T>::TokenNotFound),
 			};
 
 			let balance = T::Currency::free_balance(&_who);
-			ensure!(balance >= amount, "Balance not enought");
+			ensure!(balance >= amount, Error::<T>::BalanceNotEnough);
 
 			T::Currency::transfer(&_who, &token.owner, amount, ExistenceRequirement::AllowDeath)?;
 			Self::deposit_event(RawEvent::AppreciationReceived(collection_id, token_id, amount));
@@ -393,9 +413,9 @@ decl_module! {
 			// token exists check
 			let token = match nft::Module::<T>::tokens(collection_id, token_id) {
 				Some(expr) => expr,
-				None => fail!("token doesnt exists"),
+				None => fail!(Error::<T>::TokenNotFound),
 			};
-			ensure!(token.owner == _who, "only for owner");
+			ensure!(token.owner == _who, Error::<T>::MustBeTokenOwner);
 
 			// get token info
 			let mut info = match TokenExtendedInfo::<T>::get(collection_id, token_id) {
@@ -421,7 +441,7 @@ decl_module! {
 			let _who = ensure_signed(origin)?;
 
 			// token exists check
-			ensure!(nft::Module::<T>::tokens(collection_id, token_id).is_some(), "token doesnt exists");
+			ensure!(nft::Module::<T>::tokens(collection_id, token_id).is_some(), Error::<T>::TokenNotFound);
 
 			// get token info
 			let mut info = match TokenExtendedInfo::<T>::get(collection_id, token_id) {
@@ -446,9 +466,9 @@ decl_module! {
 			let _who = ensure_signed(origin)?;
 
 			// token exists check
-			ensure!(nft::Module::<T>::tokens(collection_id, token_id).is_some(), "token doesnt exists");
+			ensure!(nft::Module::<T>::tokens(collection_id, token_id).is_some(), Error::<T>::TokenNotFound);
 
-			ensure!(Curator::<T>::get() == _who, "only for curator");
+			ensure!(Curator::<T>::get() == _who, Error::<T>::MustBeCurator);
 
 			// get token info
 			let mut info = match TokenExtendedInfo::<T>::get(collection_id, token_id) {
@@ -472,9 +492,9 @@ decl_module! {
 			let _who = ensure_signed(origin)?;
 
 			// token exists check
-			ensure!(nft::Module::<T>::tokens(collection_id, token_id).is_some(), "token doesnt exists");
+			ensure!(nft::Module::<T>::tokens(collection_id, token_id).is_some(), Error::<T>::TokenNotFound);
 
-			ensure!(Curator::<T>::get() == _who, "only for curator");
+			ensure!(Curator::<T>::get() == _who, Error::<T>::MustBeCurator);
 
 			// get token info
 			let mut info = match TokenExtendedInfo::<T>::get(collection_id, token_id) {
