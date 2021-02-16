@@ -254,7 +254,7 @@ decl_module! {
 		#[weight = 0]
 		pub fn create_collection(origin) -> DispatchResult {
 			let _who = ensure_signed(origin)?;
-			let collection_id = nft::Module::<T>::create_class(&_who, T::DefaultClassMetadata::get(), T::DefaultClassData::get()).unwrap();
+			let collection_id = nft::Module::<T>::create_class(&_who, T::DefaultClassMetadata::get(), T::DefaultClassData::get())?;
 
 			Self::deposit_event(RawEvent::CollectionCreated(collection_id));
 
@@ -268,10 +268,7 @@ decl_module! {
 			let _who = ensure_signed(origin)?;
 
 			// collection exists check
-			let collection = match nft::Module::<T>::classes(collection_id) {
-				Some(expr) => expr,
-				None => fail!(Error::<T>::CollectionNotFound),
-			};
+			let collection = nft::Module::<T>::classes(collection_id).ok_or(Error::<T>::CollectionNotFound)?;
 
 			ensure!(collection.owner == _who, Error::<T>::MustBeCollectionOwner);
 
@@ -281,7 +278,7 @@ decl_module! {
 		    //	let locked = balance.saturating_sub(T::DefaultCost::get());	
 
 			T::Currency::set_lock(PALLET_ID, &_who, T::DefaultCost::get(), WithdrawReasons::all());
-			let token_id = nft::Module::<T>::mint(&_who, collection_id, T::DefaultTokenMetadata::get(), ipfs_pin).unwrap();
+			let token_id = nft::Module::<T>::mint(&_who, collection_id, T::DefaultTokenMetadata::get(), ipfs_pin)?;
 
 			Self::deposit_event(RawEvent::NFTCreated(collection_id, token_id));
 
@@ -295,16 +292,13 @@ decl_module! {
 			let _who = ensure_signed(origin)?;
 
 			// collection exists check
-			let collection = match nft::Module::<T>::classes(collection_id) {
-				Some(expr) => expr,
-				None => fail!(Error::<T>::CollectionNotFound),
-			};
+			let collection = nft::Module::<T>::classes(collection_id).ok_or(Error::<T>::CollectionNotFound)?;
 
 			ensure!(Curator::<T>::get() == _who || collection.owner == _who, 
 				Error::<T>::MustBeCollectionOwnerOrCurator);
 
 			T::Currency::remove_lock(PALLET_ID, &_who);
-			nft::Module::<T>::burn(&_who, (collection_id, token_id)).unwrap();	
+			nft::Module::<T>::burn(&_who, (collection_id, token_id))?;	
 
 			Self::deposit_event(RawEvent::NFTBurned(collection_id, token_id));
 
@@ -319,13 +313,10 @@ decl_module! {
 			let _who = ensure_signed(origin)?;
 
 			// token exists check
-			let token = match nft::Module::<T>::tokens(collection_id, token_id) {
-				Some(expr) => expr,
-				None => fail!(Error::<T>::TokenNotFound),
-			};
+			let token = nft::Module::<T>::tokens(collection_id, token_id).ok_or(Error::<T>::TokenNotFound)?;
 			ensure!(token.owner == _who, Error::<T>::MustBeTokenOwner);
 
-			nft::Module::<T>::transfer(&_who, &recipient, (collection_id, token_id)).unwrap();	
+			nft::Module::<T>::transfer(&_who, &recipient, (collection_id, token_id))?;	
 			Self::deposit_event(RawEvent::Transfer(collection_id, token_id, recipient));
 
 			Ok(())
@@ -389,10 +380,7 @@ decl_module! {
 			let _who = ensure_signed(origin)?;
 
 			// token exists check
-			let token = match nft::Module::<T>::tokens(collection_id, token_id) {
-				Some(expr) => expr,
-				None => fail!(Error::<T>::TokenNotFound),
-			};
+			let token = nft::Module::<T>::tokens(collection_id, token_id).ok_or(Error::<T>::TokenNotFound)?;
 
 			let balance = T::Currency::free_balance(&_who);
 			ensure!(balance >= amount, Error::<T>::BalanceNotEnough);
@@ -411,20 +399,14 @@ decl_module! {
 			let _who = ensure_signed(origin)?;
 
 			// token exists check
-			let token = match nft::Module::<T>::tokens(collection_id, token_id) {
-				Some(expr) => expr,
-				None => fail!(Error::<T>::TokenNotFound),
-			};
+			let token = nft::Module::<T>::tokens(collection_id, token_id).ok_or(Error::<T>::TokenNotFound)?;
 			ensure!(token.owner == _who, Error::<T>::MustBeTokenOwner);
 
 			// get token info
-			let mut info = match TokenExtendedInfo::<T>::get(collection_id, token_id) {
-				Some(expr) => expr,
-				None => ExtendedInfo {
-					display_flag: false,
-					report: ReportReason::None,
-				 },
-			};
+			let mut info = TokenExtendedInfo::<T>::get(collection_id, token_id).unwrap_or_else(|| ExtendedInfo {
+				display_flag: false,
+				report: ReportReason::None,
+			});
 			info.display_flag = display;
 
 			TokenExtendedInfo::<T>::insert(collection_id, token_id, info);
@@ -444,13 +426,10 @@ decl_module! {
 			ensure!(nft::Module::<T>::tokens(collection_id, token_id).is_some(), Error::<T>::TokenNotFound);
 
 			// get token info
-			let mut info = match TokenExtendedInfo::<T>::get(collection_id, token_id) {
-				Some(expr) => expr,
-				None => ExtendedInfo {
-					display_flag: false,
-					report: ReportReason::None,
-				 },
-			};
+			let mut info = TokenExtendedInfo::<T>::get(collection_id, token_id).unwrap_or_else(|| ExtendedInfo {
+				display_flag: false,
+				report: ReportReason::None,
+			});
 			info.report = reason.clone();
 
 			TokenExtendedInfo::<T>::insert(collection_id, token_id, info);
@@ -471,13 +450,10 @@ decl_module! {
 			ensure!(Curator::<T>::get() == _who, Error::<T>::MustBeCurator);
 
 			// get token info
-			let mut info = match TokenExtendedInfo::<T>::get(collection_id, token_id) {
-				Some(expr) => expr,
-				None => ExtendedInfo {
-					display_flag: false,
-					report: ReportReason::None,
-				 },
-			};
+			let mut info = TokenExtendedInfo::<T>::get(collection_id, token_id).unwrap_or_else(|| ExtendedInfo {
+				display_flag: false,
+				report: ReportReason::None,
+			});
 			info.report = ReportReason::Reported;
 
 			Self::deposit_event(RawEvent::ArtReportAccepted(collection_id, token_id));
@@ -497,13 +473,10 @@ decl_module! {
 			ensure!(Curator::<T>::get() == _who, Error::<T>::MustBeCurator);
 
 			// get token info
-			let mut info = match TokenExtendedInfo::<T>::get(collection_id, token_id) {
-				Some(expr) => expr,
-				None => ExtendedInfo {
-					display_flag: false,
-					report: ReportReason::None,
-				 },
-			};
+			let mut info = TokenExtendedInfo::<T>::get(collection_id, token_id).unwrap_or_else(|| ExtendedInfo {
+				display_flag: false,
+				report: ReportReason::None,
+			});
 			info.report = ReportReason::Reported;
 
 			Self::deposit_event(RawEvent::ArtReportCleared(collection_id, token_id));
