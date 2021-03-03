@@ -258,35 +258,24 @@ impl pallet_transaction_payment::Config for Runtime {
 impl orml_nft::Config for Runtime {
 	type ClassId = u64;
 	type TokenId = u64;
-	type ClassData = u64;
-	type TokenData = u64;
+	type ClassData = art_gallery_pallet::ClassData;
+	type TokenData = art_gallery_pallet::TokenData;
 }
 
 parameter_types! {
 	pub const DefaultCost: Balance = 10_000_000_000;
-	pub DefaultClassData: u64 = 1000;
-	pub DefaultClassMetadata: Vec<u8> = vec![1];
-	pub DefaultTokenMetadata: Vec<u8> = vec![1];
 }
 
 impl art_gallery_pallet::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
 	type DefaultCost = DefaultCost;
-	type DefaultClassData = DefaultClassData;
-	type DefaultClassMetadata = DefaultClassMetadata;
-	type DefaultTokenMetadata = DefaultTokenMetadata;
 }
 
 impl pallet_sudo::Config for Runtime {
 	type Event = Event;
 	type Call = Call;
 }
-
-/// Configure the pallet template in pallets/template.
-// impl template::Config for Runtime {
-// 	type Event = Event;
-// }
 
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(

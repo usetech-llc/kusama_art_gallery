@@ -157,6 +157,7 @@ dependencies = [
  "orml-nft",
  "parity-scale-codec",
  "serde",
+ "serde_derive",
  "sp-core",
  "sp-io",
  "sp-runtime",

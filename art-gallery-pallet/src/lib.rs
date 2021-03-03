@@ -27,19 +27,17 @@
 use codec::{Decode, Encode};
 use frame_support::{ 
 	decl_error, decl_event, decl_module, 
-	decl_storage, ensure, fail, 
-	Parameter,  
+	decl_storage, ensure,
 };
 use frame_support::traits::{
 	Currency, LockableCurrency, LockIdentifier, WithdrawReasons,
 	Get, ExistenceRequirement,
 };
-use sp_runtime::traits::Saturating;
 use frame_system::{ ensure_signed, ensure_root };
 use orml_nft::{self as nft};
 // use pallet_atomic_swap::{self as atomic_swap};
 use sp_runtime::{ 	
-	traits::{AtLeast32BitUnsigned, Member, Zero},
+	traits::{Zero},
 	DispatchResult, };
 use sp_std::prelude::*;
 
@@ -55,6 +53,16 @@ pub enum ReportReason {
 	Duplicate,
 	Reported
 }
+
+#[derive(Encode, Decode, Clone, Debug, Eq, PartialEq)]
+#[derive(Serialize)]
+pub struct TokenData {
+    pub ipfs_pin: Vec<u8>,
+}
+
+#[derive(Encode, Decode, Clone, Debug, Eq, PartialEq)]
+#[derive(Serialize)]
+pub struct ClassData {}
 
 #[derive(Encode, Decode, Clone, Debug, PartialEq)]
 pub struct ExtendedInfo {
@@ -90,15 +98,6 @@ pub trait Config: frame_system::Config + nft::Config  { //+ atomic_swap::Config
 
 	/// Token default cost.
 	type DefaultCost: Get<BalanceOf<Self>>;
-
-	/// Default class data.
-	type DefaultClassData: Get<Self::ClassData>;
-
-	/// Default class metadata.
-	type DefaultClassMetadata: Get<Vec<u8>>;
-
-	/// Default token metadata.
-	type DefaultTokenMetadata: Get<Vec<u8>>;
 }
 
 decl_event!(
@@ -252,9 +251,11 @@ decl_module! {
 		fn deposit_event() = default;
 
 		#[weight = 0]
-		pub fn create_collection(origin) -> DispatchResult {
+		pub fn create_collection(origin, 
+				metadata: Vec<u8>, 
+				data: <T as orml_nft::Config>::ClassData) -> DispatchResult {
 			let _who = ensure_signed(origin)?;
-			let collection_id = nft::Module::<T>::create_class(&_who, T::DefaultClassMetadata::get(), T::DefaultClassData::get())?;
+			let collection_id = nft::Module::<T>::create_class(&_who, metadata, data)?;
 
 			Self::deposit_event(RawEvent::CollectionCreated(collection_id));
 
@@ -264,7 +265,8 @@ decl_module! {
 		#[weight = 0]
 		pub fn mint(origin,
 				collection_id: T::ClassId,
-				ipfs_pin: T::TokenData) -> DispatchResult {
+				metadata: Vec<u8>,
+				data: <T as orml_nft::Config>::TokenData) -> DispatchResult {
 			let _who = ensure_signed(origin)?;
 
 			// collection exists check
@@ -278,7 +280,7 @@ decl_module! {
 		    //	let locked = balance.saturating_sub(T::DefaultCost::get());	
 
 			T::Currency::set_lock(PALLET_ID, &_who, T::DefaultCost::get(), WithdrawReasons::all());
-			let token_id = nft::Module::<T>::mint(&_who, collection_id, T::DefaultTokenMetadata::get(), ipfs_pin)?;
+			let token_id = nft::Module::<T>::mint(&_who, collection_id, metadata, data)?;
 
 			Self::deposit_event(RawEvent::NFTCreated(collection_id, token_id));
 
